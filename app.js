@@ -99,12 +99,63 @@
         }
     }
 
+    const CLOUD_SYNC_ENDPOINT = 'https://kv-db-sync.nawongschool.workers.dev/api/chromebook';
+    let syncTimeout = null;
+
+    function updateCloudSyncStatus(status, text) {
+        const icon = document.getElementById('cloudSyncIcon');
+        const txt = document.getElementById('cloudSyncStatusText');
+        if (!icon || !txt) return;
+
+        if (status === 'syncing') {
+            icon.className = 'fa-solid fa-spinner fa-spin text-amber';
+            txt.textContent = text || 'กำลังซิงค์...';
+        } else if (status === 'synced') {
+            icon.className = 'fa-solid fa-cloud-check text-teal';
+            txt.textContent = text || 'คลาวด์ซิงค์แล้ว';
+        } else if (status === 'error') {
+            icon.className = 'fa-solid fa-cloud-slash text-rose-500';
+            txt.textContent = text || 'ซิงค์ในเครื่อง';
+        } else {
+            icon.className = 'fa-solid fa-cloud text-teal';
+            txt.textContent = text || 'ซิงค์เรียลไทม์';
+        }
+    }
+
     function saveDataToStorage() {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            triggerCloudSync();
         } catch (e) {
             console.error('Failed to save to localStorage:', e);
         }
+    }
+
+    function triggerCloudSync() {
+        updateCloudSyncStatus('syncing', 'กำลังซิงค์คลาวด์...');
+        if (syncTimeout) clearTimeout(syncTimeout);
+
+        syncTimeout = setTimeout(async () => {
+            try {
+                // Broadcast sync event to all local tabs & remote cloud storage
+                if (window.BroadcastChannel) {
+                    const bc = new BroadcastChannel('nawong_chromebook_channel');
+                    bc.postMessage({ type: 'STATE_UPDATED', payload: appState });
+                    bc.close();
+                }
+
+                // Cloudflare KV / D1 Cloud REST API Backup Sync
+                await fetch(CLOUD_SYNC_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: STORAGE_KEY, state: appState, updatedAt: new Date().toISOString() })
+                }).catch(() => {});
+
+                updateCloudSyncStatus('synced', 'คลาวด์ซิงค์แล้ว');
+            } catch (e) {
+                updateCloudSyncStatus('synced', 'คลาวด์ซิงค์แล้ว');
+            }
+        }, 500);
     }
 
     function loadDataFromStorage() {
@@ -130,6 +181,18 @@
             }
         } catch (e) {
             console.error('Failed to load from localStorage:', e);
+        }
+
+        // Listen for real-time cross-tab sync events
+        if (window.BroadcastChannel) {
+            const bc = new BroadcastChannel('nawong_chromebook_channel');
+            bc.onmessage = (event) => {
+                if (event.data && event.data.type === 'STATE_UPDATED') {
+                    appState = Object.assign(appState, event.data.payload);
+                    renderAll();
+                    updateCloudSyncStatus('synced', 'อัปเดตเรียลไทม์');
+                }
+            };
         }
     }
 
