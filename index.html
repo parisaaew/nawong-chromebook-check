@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจเช็ค Chromebook - โรงเรียนวัดนาวง (มัธยมศึกษาตอนปลาย)</title>
+    <!-- Google Fonts: Prompt & Sarabun -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Fullscreen Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="fa-solid fa-laptop-code"></i>
+                </div>
+                <h2>ระบบตรวจเช็ค Chromebook</h2>
+                <p>โรงเรียนวัดนาวง (มัธยมศึกษาตอนปลาย)</p>
+            </div>
+            <form id="formLogin" class="login-body">
+                <div class="form-group">
+                    <label for="loginUsername"><i class="fa-solid fa-user"></i> ชื่อผู้ใช้งาน:</label>
+                    <input type="text" id="loginUsername" class="form-input" value="admin" required placeholder="ชื่อผู้ใช้งาน">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword"><i class="fa-solid fa-key"></i> รหัสผ่าน (Password):</label>
+                    <input type="password" id="loginPassword" class="form-input" required placeholder="กรอกรหัสผ่านเข้าใช้งาน" autofocus>
+                </div>
+                <div id="loginErrorMsg" class="login-error" style="display:none;">
+                    <i class="fa-solid fa-circle-exclamation"></i> รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 0.5rem;">
+                    <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ (Login)
+                </button>
+            </form>
+            <div class="login-footer">
+                <span>© 2026 โรงเรียนวัดนาวง • พัฒนาระบบโดย: parisa manop</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app-container">
+        
+        <!-- Top Navigation Bar -->
+        <header class="topbar no-print">
+            <div class="topbar-left">
+                <div class="school-logo">
+                    <i class="fa-solid fa-laptop-code"></i>
+                </div>
+                <div class="school-info">
+                    <h1 class="app-title">ระบบตรวจเช็ค Chromebook</h1>
+                    <p class="app-subtitle">โรงเรียนวัดนาวง (มัธยมศึกษาตอนปลาย)</p>
+                </div>
+            </div>
+
+            <div class="topbar-actions">
+                <!-- Inspection Date & Title Selector -->
+                <div class="control-group">
+                    <label for="periodDatePicker"><i class="fa-regular fa-calendar"></i> วันที่:</label>
+                    <input type="date" id="periodDatePicker" class="form-input" style="width: 135px;">
+                </div>
+
+                <div class="control-group">
+                    <label for="periodNameInput"><i class="fa-solid fa-pen-to-square"></i> รอบ:</label>
+                    <input type="text" id="periodNameInput" class="form-input" placeholder="เช่น ตรวจประจำสัปดาห์" style="width: 140px;">
+                </div>
+
+                <button id="btnOpenHistoryModal" class="btn btn-sm btn-outline-secondary" title="ดูประวัติการตรวจเช็คย้อนหลัง">
+                    <i class="fa-solid fa-clock-rotate-left"></i> ประวัติย้อนหลัง <span class="badge badge-info" id="historyCountBadge">0</span>
+                </button>
+
+                <!-- Teacher Selector -->
+                <div class="control-group">
+                    <label for="teacherSelect"><i class="fa-solid fa-user-tie"></i> ผู้ตรวจ:</label>
+                    <select id="teacherSelect" class="form-select" style="max-width: 180px;">
+                        <option value="ALL">ผู้ดูแลระบบ (งาน ICT / ภาพรวม)</option>
+                        <!-- Dynamic Options populated by JS -->
+                    </select>
+                    <button id="btnOpenTeacherModal" class="btn btn-sm btn-outline-secondary" title="เพิ่ม/จัดการครูที่ปรึกษา">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </button>
+                </div>
+
+                <button id="btnClearAllData" class="btn btn-sm btn-outline-danger" title="ล้างข้อมูลทั้งหมด">
+                    <i class="fa-solid fa-trash-can"></i> ล้างข้อมูล
+                </button>
+
+                <button id="btnLogout" class="btn btn-sm btn-outline-danger" title="ออกจากระบบ">
+                    <i class="fa-solid fa-right-from-bracket"></i> ออกระบบ
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="main-nav no-print">
+            <button class="nav-tab active" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie"></i> แดชบอร์ดภาพรวม
+            </button>
+            <button class="nav-tab" data-tab="inspection">
+                <i class="fa-solid fa-list-check"></i> บันทึกการตรวจเช็ค
+            </button>
+            <button class="nav-tab" data-tab="inventory">
+                <i class="fa-solid fa-laptop"></i> คลัง Chromebook & จัดการเครื่อง
+            </button>
+            <button class="nav-tab" data-tab="report">
+                <i class="fa-solid fa-file-invoice"></i> ออกรายงาน & พิมพ์เอกสาร
+            </button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+
+            <!-- TAB 1: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-content active no-print">
+                <!-- Summary Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card primary">
+                        <div class="metric-icon"><i class="fa-solid fa-laptop"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">Chromebook ทั้งหมด</span>
+                            <span class="metric-value" id="statTotal">0 <small>เครื่อง</small></span>
+                        </div>
+                    </div>
+                    <div class="metric-card success">
+                        <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">ตรวจแล้ว อุปกรณ์ครบถ้วน</span>
+                            <span class="metric-value" id="statComplete">0 <small>เครื่อง</small></span>
+                        </div>
+                    </div>
+                    <div class="metric-card warning">
+                        <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">อุปกรณ์ไม่ครบ / ชำรุด</span>
+                            <span class="metric-value" id="statIssue">0 <small>เครื่อง</small></span>
+                        </div>
+                    </div>
+                    <div class="metric-card danger">
+                        <div class="metric-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">สูญหาย / รอส่งซ่อมด่วน</span>
+                            <span class="metric-value" id="statCritical">0 <small>เครื่อง</small></span>
+                        </div>
+                    </div>
+                    <div class="metric-card info">
+                        <div class="metric-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">ยังไม่ได้ตรวจเช็ค</span>
+                            <span class="metric-value" id="statPending">0 <small>เครื่อง</small></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Class Progress Breakdown Grid -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-school"></i> สถานะการตรวจเช็คแยกตามห้องเรียน</h2>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="btnOpenHistoryDash" class="btn btn-sm btn-outline-secondary">
+                                <i class="fa-solid fa-clock-rotate-left"></i> ประวัติตรวจย้อนหลัง (<span id="statHistoryRounds">0</span> รอบ)
+                            </button>
+                            <button id="btnAddClassDash" class="btn btn-sm btn-outline-secondary">
+                                <i class="fa-solid fa-plus"></i> เพิ่มห้องเรียน/ครูที่ปรึกษา
+                            </button>
+                        </div>
+                    </div>
+                    <div class="class-grid" id="classProgressGrid">
+                        <!-- Class Cards will be rendered dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Recent Problem Logs & Hardware Breakdown -->
+                <div class="dashboard-columns">
+                    <div class="dashboard-box">
+                        <div class="box-header">
+                            <h3><i class="fa-solid fa-triangle-exclamation text-amber"></i> รายการแจ้งอุปกรณ์มีปัญหาล่าสุด</h3>
+                        </div>
+                        <div class="issue-list" id="recentIssueList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="dashboard-box">
+                        <div class="box-header">
+                            <h3><i class="fa-solid fa-toolbox text-teal"></i> สรุปประเภทปัญหาฮาร์ดแวร์ & อุปกรณ์</h3>
+                        </div>
+                        <div class="hardware-stats">
+                            <div class="hw-item">
+                                <div class="hw-icon"><i class="fa-solid fa-desktop"></i></div>
+                                <div class="hw-details">
+                                    <div class="hw-title"><span>ตัวเครื่อง Chromebook (จอ/คีย์บอร์ด/บอดี้)</span> <strong id="hwCountBody">0</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill fill-danger" id="hwBarBody" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                            <div class="hw-item">
+                                <div class="hw-icon"><i class="fa-solid fa-plug"></i></div>
+                                <div class="hw-details">
+                                    <div class="hw-title"><span>สายชาร์จ & อะแดปเตอร์</span> <strong id="hwCountCharger">0</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill fill-warning" id="hwBarCharger" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                            <div class="hw-item">
+                                <div class="hw-icon"><i class="fa-solid fa-pen-ruler"></i></div>
+                                <div class="hw-details">
+                                    <div class="hw-title"><span>ปากกา Stylus Pen</span> <strong id="hwCountPen">0</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill fill-warning" id="hwBarPen" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                            <div class="hw-item">
+                                <div class="hw-icon"><i class="fa-solid fa-barcode"></i></div>
+                                <div class="hw-details">
+                                    <div class="hw-title"><span>สติกเกอร์รหัสเครื่อง / ครุภัณฑ์</span> <strong id="hwCountTag">0</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill fill-info" id="hwBarTag" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: INSPECTION FORM -->
+            <section id="tab-inspection" class="tab-content no-print">
+                <!-- Inspection Filters Header -->
+                <div class="filter-card">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label for="inspectClassFilter"><i class="fa-solid fa-graduation-cap"></i> เลือกห้องเรียน:</label>
+                            <select id="inspectClassFilter" class="form-select">
+                                <option value="ALL">ทุกห้องเรียน</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <label for="inspectStatusFilter"><i class="fa-solid fa-filter"></i> กรองสถานะ:</label>
+                            <select id="inspectStatusFilter" class="form-select">
+                                <option value="ALL">ทั้งหมดในห้อง</option>
+                                <option value="PENDING">ยังไม่ได้ตรวจ</option>
+                                <option value="COMPLETE">อุปกรณ์ครบถ้วน</option>
+                                <option value="ISSUE">มีปัญหา / ไม่ครบ / ชำรุด</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-item search-item">
+                            <label for="inspectSearch"><i class="fa-solid fa-magnifying-glass"></i> ค้นหา:</label>
+                            <input type="text" id="inspectSearch" class="form-input" placeholder="พิมพ์ชื่อนักเรียน หรือ หมายเลขเครื่อง...">
+                        </div>
+
+                        <div class="filter-actions">
+                            <button id="btnMarkAllComplete" class="btn btn-success" title="บันทึกให้นักเรียนทุกคนในห้องนี้ว่าอุปกรณ์ครบถ้วน">
+                                <i class="fa-solid fa-bolt"></i> ผ่านครบถ้วนทั้งห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inspection Cards Grid -->
+                <div class="inspection-list" id="inspectionListContainer">
+                    <!-- Dynamic Student Inspection Cards Rendered Here -->
+                </div>
+            </section>
+
+            <!-- TAB 3: INVENTORY & ADD MACHINE -->
+            <section id="tab-inventory" class="tab-content no-print">
+                <div class="inventory-toolbar">
+                    <div class="toolbar-left">
+                        <h2><i class="fa-solid fa-boxes-stacked"></i> ทะเบียนเครื่อง Chromebook โรงเรียนวัดนาวง</h2>
+                    </div>
+                    <div class="toolbar-right">
+                        <button id="btnOpenImportModal" class="btn btn-success" title="นำเข้ารายชื่อหลายคนจาก Excel หรือ Copy-Paste">
+                            <i class="fa-solid fa-file-excel"></i> 📥 อัปไฟล์ Excel / หลายชื่อ
+                        </button>
+                        <button id="btnAddStudent" class="btn btn-primary" title="ลงทะเบียนเพิ่มเครื่อง Chromebook หรือนักเรียนใหม่">
+                            <i class="fa-solid fa-plus-circle"></i> + เพิ่มเครื่องเดียว
+                        </button>
+                        <button id="btnOpenTeacherModalInv" class="btn btn-outline-secondary" title="เพิ่ม/แก้ไขชื่อครูที่ปรึกษา">
+                            <i class="fa-solid fa-user-gear"></i> จัดการครูที่ปรึกษา
+                        </button>
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="inventorySearch" class="form-input" placeholder="ค้นหาเลขเครื่อง, รหัสนักเรียน, ชื่อ หรือ ห้อง...">
+                        </div>
+                        <select id="inventoryClassFilter" class="form-select">
+                            <option value="ALL">ทุกห้องเรียน</option>
+                            <!-- Dynamic -->
+                        </select>
+                        <button id="btnExportCSV" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-file-csv"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Inventory Table -->
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>หมายเลขเครื่อง</th>
+                                <th>รหัสครุภัณฑ์ (S/N)</th>
+                                <th>รหัสนักเรียน</th>
+                                <th>ชื่อ - สกุล ผู้ถือครอง</th>
+                                <th>ระดับชั้น</th>
+                                <th>ครูที่ปรึกษา</th>
+                                <th>สถานะล่าสุด</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 4: OFFICIAL PRINT REPORT -->
+            <section id="tab-report" class="tab-content">
+                <!-- Print Settings Toolbar (Hidden during actual print) -->
+                <div class="report-toolbar no-print">
+                    <div class="toolbar-options">
+                        <div class="option-item">
+                            <label for="reportClassSelect">เลือกห้องเรียนสำหรับพิมพ์:</label>
+                            <select id="reportClassSelect" class="form-select">
+                                <option value="ALL">ทุกห้องเรียน (สรุปภาพรวม)</option>
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-actions">
+                        <button id="btnToggleSignerSettings" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-pen-nib"></i> ⚙️ ตั้งค่าชื่อ-ตำแหน่ง ผู้ลงนามเอกสาร
+                        </button>
+                        <button id="btnPrint" class="btn btn-primary btn-lg">
+                            <i class="fa-solid fa-print"></i> พิมพ์เอกสาร (Print A4)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Collapsible Signer Customization Panel -->
+                <div id="signerSettingsCard" class="filter-card no-print" style="display: none; margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid var(--slate-300);">
+                    <div class="box-header" style="margin-bottom: 1rem; border-bottom: 1px solid var(--slate-200); padding-bottom: 0.5rem;">
+                        <h3><i class="fa-solid fa-signature text-teal"></i> แก้ไขชื่อ และตำแหน่ง ผู้ลงนามในท้ายเอกสาร A4</h3>
+                        <button class="btn btn-sm btn-outline-secondary" id="btnCloseSignerSettings">&times; ปิดกล่องตั้งค่า</button>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
+                        <!-- Signer 1 -->
+                        <div style="background: #fff; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--slate-200);">
+                            <h4 style="font-size: 0.85rem; color: var(--teal-700); margin-bottom: 0.75rem;"><i class="fa-solid fa-user-tie"></i> ผู้ลงนามที่ 1 (ครูที่ปรึกษา)</h4>
+                            <div class="form-group">
+                                <label>ข้อความระบุการลงชื่อ:</label>
+                                <input type="text" id="sig1Title" class="form-input" value="ครูที่ปรึกษา">
+                            </div>
+                            <div class="form-group">
+                                <label>ชื่อ - สกุล:</label>
+                                <input type="text" id="sig1Name" class="form-input" placeholder="อัตโนมัติตามครูประจำห้อง หรือ พิมพ์ระบุได้">
+                            </div>
+                            <div class="form-group">
+                                <label>ตำแหน่ง:</label>
+                                <input type="text" id="sig1Pos" class="form-input" value="ตำแหน่ง ครูประจำชั้น/ครูที่ปรึกษา">
+                            </div>
+                        </div>
+
+                        <!-- Signer 2 -->
+                        <div style="background: #fff; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--slate-200);">
+                            <h4 style="font-size: 0.85rem; color: var(--teal-700); margin-bottom: 0.75rem;"><i class="fa-solid fa-user-gear"></i> ผู้ลงนามที่ 2 (ผู้ตรวจรับงาน/ICT)</h4>
+                            <div class="form-group">
+                                <label>ข้อความระบุการลงชื่อ:</label>
+                                <input type="text" id="sig2Title" class="form-input" value="ผู้ตรวจรับงาน">
+                            </div>
+                            <div class="form-group">
+                                <label>ชื่อ - สกุล:</label>
+                                <input type="text" id="sig2Name" class="form-input" value="นายวิชัย พัฒนาวิทย์">
+                            </div>
+                            <div class="form-group">
+                                <label>ตำแหน่ง:</label>
+                                <input type="text" id="sig2Pos" class="form-input" value="ตำแหน่ง หัวหน้างานเทคโนโลยีและ ICT">
+                            </div>
+                        </div>
+
+                        <!-- Signer 3 -->
+                        <div style="background: #fff; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--slate-200);">
+                            <h4 style="font-size: 0.85rem; color: var(--teal-700); margin-bottom: 0.75rem;"><i class="fa-solid fa-user-check"></i> ผู้ลงนามที่ 3 (ผู้อนุมัติ/ผู้อำนวยการ)</h4>
+                            <div class="form-group">
+                                <label>ข้อความระบุการลงชื่อ:</label>
+                                <input type="text" id="sig3Title" class="form-input" value="ผู้อนุมัติ">
+                            </div>
+                            <div class="form-group">
+                                <label>ชื่อ - สกุล:</label>
+                                <input type="text" id="sig3Name" class="form-input" value="นายสมศักดิ์ สุขเจริญ">
+                            </div>
+                            <div class="form-group">
+                                <label>ตำแหน่ง:</label>
+                                <input type="text" id="sig3Pos" class="form-input" value="ตำแหน่ง ผู้อำนวยการโรงเรียนวัดนาวง">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Printable Document Canvas (Formatted for A4) -->
+                <div class="print-document" id="printDocumentArea">
+                    <!-- Official Header -->
+                    <div class="doc-header">
+                        <div class="doc-logo">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <div class="doc-title-group">
+                            <h2 class="doc-school">โรงเรียนวัดนาวง</h2>
+                            <h3 class="doc-title">แบบบันทึกการตรวจเช็คและตรวจสอบสภาพเครื่อง Chromebook และอุปกรณ์</h3>
+                            <p class="doc-subtitle">ระดับชั้นมัธยมศึกษาตอนปลาย</p>
+                        </div>
+                    </div>
+
+                    <!-- Document Meta info -->
+                    <div class="doc-meta">
+                        <div class="meta-col">
+                            <div><strong>รอบการตรวจเช็ค:</strong> <span id="docPeriodText">ตรวจประจำวันที่...</span></div>
+                            <div><strong>ระดับชั้น/ห้อง:</strong> <span id="docClassText">มัธยมศึกษาปีที่ 4/1</span></div>
+                        </div>
+                        <div class="meta-col text-right">
+                            <div><strong>วันที่ตรวจ/พิมพ์เอกสาร:</strong> <span id="docDateText">22 กรกฎาคม 2026</span></div>
+                            <div><strong>ครูที่ปรึกษาผู้ตรวจ:</strong> <span id="docTeacherText">ครูที่ปรึกษา</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Stats Box for Document -->
+                    <div class="doc-summary-box">
+                        <div class="sum-item">จำนวนเครื่องทั้งหมด: <strong id="docTotalCount">0</strong> เครื่อง</div>
+                        <div class="sum-item text-success">อุปกรณ์ครบปกติ: <strong id="docCompleteCount">0</strong> เครื่อง</div>
+                        <div class="sum-item text-danger">อุปกรณ์ไม่ครบ/ชำรุด/สูญหาย: <strong id="docIssueCount">0</strong> เครื่อง</div>
+                    </div>
+
+                    <!-- Printable Detail Table -->
+                    <div class="doc-table-container">
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">ลำดับ</th>
+                                    <th style="width: 8%;">เลขเครื่อง</th>
+                                    <th style="width: 12%;">รหัสนักเรียน</th>
+                                    <th style="width: 22%;">ชื่อ - สกุล นักเรียน</th>
+                                    <th style="width: 10%;">ตัวเครื่อง</th>
+                                    <th style="width: 10%;">สายชาร์จ</th>
+                                    <th style="width: 10%;">ปากกา Stylus</th>
+                                    <th style="width: 23%;">สถานะ / หมายเหตุอาการชำรุด</th>
+                                </tr>
+                            </thead>
+                            <tbody id="docTableBody">
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Customizable Sign-off Section -->
+                    <div class="doc-signatures">
+                        <div class="sig-block">
+                            <div class="sig-line-wrapper">
+                                <span class="sig-prefix">ลงชื่อ</span>
+                                <span class="sig-dots"></span>
+                                <span class="sig-title" id="sig1TitleText">ครูที่ปรึกษา</span>
+                            </div>
+                            <p>( <span id="sig1NameText">ครูที่ปรึกษา</span> )</p>
+                            <p><span id="sig1PosText">ตำแหน่ง ครูประจำชั้น/ครูที่ปรึกษา</span></p>
+                            <p>วันที่......../......../........</p>
+                        </div>
+                        <div class="sig-block">
+                            <div class="sig-line-wrapper">
+                                <span class="sig-prefix">ลงชื่อ</span>
+                                <span class="sig-dots"></span>
+                                <span class="sig-title" id="sig2TitleText">ผู้ตรวจรับงาน</span>
+                            </div>
+                            <p>( <span id="sig2NameText">นายวิชัย พัฒนาวิทย์</span> )</p>
+                            <p><span id="sig2PosText">ตำแหน่ง หัวหน้างานเทคโนโลยีและ ICT</span></p>
+                            <p>วันที่......../......../........</p>
+                        </div>
+                        <div class="sig-block">
+                            <div class="sig-line-wrapper">
+                                <span class="sig-prefix">ลงชื่อ</span>
+                                <span class="sig-dots"></span>
+                                <span class="sig-title" id="sig3TitleText">ผู้อนุมัติ</span>
+                            </div>
+                            <p>( <span id="sig3NameText">นายสมศักดิ์ สุขเจริญ</span> )</p>
+                            <p><span id="sig3PosText">ตำแหน่ง ผู้อำนวยการโรงเรียนวัดนาวง</span></p>
+                            <p>วันที่......../......../........</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer with Developer Credit -->
+        <footer class="app-footer no-print">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>© 2026 โรงเรียนวัดนาวง — ระบบตรวจเช็ค Chromebook (ระดับชั้นมัธยมศึกษาตอนปลาย)</span>
+                </div>
+                <div class="footer-right">
+                    <span><i class="fa-solid fa-code text-teal"></i> พัฒนาระบบโดย: <strong>parisa manop</strong></span>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Modal INSPECTION HISTORY LOGS -->
+    <div id="modalHistory" class="modal-overlay">
+        <div class="modal-box" style="max-width: 750px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> 📜 ประวัติการตรวจเช็ค Chromebook ย้อนหลัง</h3>
+                <button class="modal-close btnCloseModalGeneric" type="button" aria-label="ปิด">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1rem;">
+                    แสดงประวัติรอบการตรวจเช็คทั้งหมดที่เคยบันทึกไว้ ท่านสามารถเลือกย้อนกลับไปดู พิมพ์รายงาน หรือแก้ไขข้อมูลของวันนั้นๆ ได้ทันที
+                </p>
+
+                <div id="historyListContainer" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 380px; overflow-y: auto;">
+                    <!-- Rendered by JS -->
+                </div>
+
+                <div class="modal-footer" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--slate-200);">
+                    <button type="button" class="btn btn-outline-secondary btnCloseModalGeneric"><i class="fa-solid fa-xmark"></i> ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / Edit Student & Chromebook Modal -->
+    <div id="modalEdit" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalTitle"><i class="fa-solid fa-user-pen"></i> จัดการข้อมูล Chromebook & นักเรียน</h3>
+                <button class="modal-close btnCloseModalGeneric" type="button" aria-label="ปิด">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditStudent">
+                    <input type="hidden" id="editStudentId">
+                    <div class="form-group">
+                        <label>หมายเลขเครื่อง Chromebook (กำหนดได้เสรี):</label>
+                        <input type="number" id="editDeviceNo" class="form-input" min="1" required placeholder="เช่น 1, 15, 30 ฯลฯ">
+                    </div>
+                    <div class="form-group">
+                        <label>รหัสครุภัณฑ์ (Serial Number):</label>
+                        <input type="text" id="editSerialNo" class="form-input" required placeholder="เช่น NW-CB-001">
+                    </div>
+                    <div class="form-group">
+                        <label>รหัสนักเรียน:</label>
+                        <input type="text" id="editCode" class="form-input" required placeholder="เช่น 68001">
+                    </div>
+                    <div class="form-group">
+                        <label>ชื่อ - สกุล นักเรียน:</label>
+                        <input type="text" id="editFullName" class="form-input" required placeholder="เช่น นายสมชาย ใจดี">
+                    </div>
+                    <div class="form-group">
+                        <label>ระดับชั้น / ห้องเรียน:</label>
+                        <select id="editClass" class="form-select" required>
+                            <!-- Dynamic populated by JS -->
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btnCloseModalGeneric">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Manage Teachers & Classes -->
+    <div id="modalTeachers" class="modal-overlay">
+        <div class="modal-box" style="max-width: 650px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-gear"></i> เพิ่ม / จัดการชื่อครูที่ปรึกษา & ห้องเรียน</h3>
+                <button class="modal-close btnCloseModalGeneric" type="button" aria-label="ปิด">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formAddTeacher" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--slate-200);">
+                    <input type="hidden" id="editTeacherIndex" value="-1">
+                    <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;" id="teacherFormHeading">
+                        <i class="fa-solid fa-plus-circle text-teal"></i> เพิ่ม/แก้ไขห้องเรียน & ครูที่ปรึกษา
+                    </h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <div class="form-group">
+                            <label>ชื่อห้องเรียน:</label>
+                            <input type="text" id="newClassName" class="form-input" required placeholder="เช่น ม.4/1, ม.5/3">
+                        </div>
+                        <div class="form-group">
+                            <label>ชื่อ - สกุล ครูที่ปรึกษา:</label>
+                            <input type="text" id="newTeacherName" class="form-input" required placeholder="เช่น ครูสมชาย ใจดี">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="submit" class="btn btn-success btn-sm" id="btnSaveTeacher"><i class="fa-solid fa-check"></i> บันทึกข้อมูลครู</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelTeacherEdit" style="display:none;">ยกเลิกแก้ไข</button>
+                    </div>
+                </form>
+
+                <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;"><i class="fa-solid fa-list text-teal"></i> รายชื่อห้องเรียนและครูที่ปรึกษาในระบบ</h4>
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ห้องเรียน</th>
+                                <th>ชื่อครูที่ปรึกษา</th>
+                                <th style="width: 120px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacherTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="modal-footer" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--slate-200);">
+                    <button type="button" class="btn btn-outline-secondary btnCloseModalGeneric"><i class="fa-solid fa-xmark"></i> ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal BULK IMPORT Excel/CSV Students -->
+    <div id="modalImportStudents" class="modal-overlay">
+        <div class="modal-box" style="max-width: 750px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-file-excel"></i> 📥 นำเข้ารายชื่อนักเรียนหลายคน (Excel / CSV)</h3>
+                <button class="modal-close btnCloseModalGeneric" type="button" aria-label="ปิด">&times;</button>
+            </div>
+            <div class="modal-body">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; background: var(--slate-50); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--slate-200);">
+                    <div>
+                        <strong style="font-size: 0.9rem;"><i class="fa-solid fa-circle-info text-teal"></i> มีไฟล์ Excel อยู่แล้วหรือไม่?</strong>
+                        <p style="font-size: 0.8rem; color: var(--slate-600);">สามารถดาวน์โหลดแบบฟอร์มตัวอย่าง หรือ คัดลอกตารางจาก Excel มาวางได้เลย</p>
+                    </div>
+                    <button id="btnDownloadTemplate" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-download"></i> แบบฟอร์มตัวอย่าง Excel
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label><strong>1. เลือกไฟล์ CSV/Excel หรือวางข้อมูลจาก Excel:</strong></label>
+                    <input type="file" id="importFileInput" accept=".csv, .txt" class="form-input" style="margin-bottom: 0.5rem;">
+                    
+                    <p style="font-size: 0.8rem; color: var(--slate-600); margin-bottom: 0.35rem;">หรือ คัดลอก (Copy) ข้อมูลจาก Excel แล้ววางลงในช่องด้านล่าง (คอลัมน์: เลขเครื่อง | รหัสนักเรียน | ชื่อ-สกุล | ห้องเรียน | รหัสครุภัณฑ์):</p>
+                    <textarea id="importTextarea" class="form-input" style="min-height: 120px; font-family: monospace; font-size: 0.85rem;" placeholder="ตัวอย่างการวางข้อมูล:&#10;1	68001	นายสมชาย ใจดี	ม.4/1	NW-CB-001&#10;2	68002	นางสาวสมหญิง สุขใจ	ม.4/1	NW-CB-002"></textarea>
+                </div>
+
+                <button type="button" id="btnPreviewImport" class="btn btn-outline-secondary btn-sm" style="margin-bottom: 1rem;">
+                    <i class="fa-solid fa-eye"></i> ตรวจสอบตัวอย่างรายการที่จะนำเข้า
+                </button>
+
+                <!-- Import Preview Table -->
+                <div id="importPreviewArea" style="display: none;">
+                    <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">ตัวอย่างรายการที่จะบันทึกเข้าสู่ระบบ (<span id="importParsedCount">0</span> รายการ):</h4>
+                    <div class="table-responsive" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
+                        <table class="data-table" style="font-size: 0.8rem;">
+                            <thead>
+                                <tr>
+                                    <th>เลขเครื่อง</th>
+                                    <th>รหัสนักเรียน</th>
+                                    <th>ชื่อ - สกุล</th>
+                                    <th>ห้องเรียน</th>
+                                    <th>S/N ครุภัณฑ์</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewTbody">
+                                <!-- Generated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="padding-top: 0.75rem; border-top: 1px solid var(--slate-200);">
+                    <button type="button" class="btn btn-outline-secondary btnCloseModalGeneric">ยกเลิก</button>
+                    <button type="button" id="btnConfirmImport" class="btn btn-success" disabled>
+                        <i class="fa-solid fa-floppy-disk"></i> ยืนยันบันทึกนำเข้าข้อมูล
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
