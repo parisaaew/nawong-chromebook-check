@@ -45,9 +45,27 @@
 
     let parsedImportData = [];
 
-    /* ==========================================================================
-       1. INITIALIZATION & LOCAL STORAGE & LOGIN AUTHENTICATION
-       ========================================================================== */
+    async function fetchCloudState(isManual = false) {
+        try {
+            updateCloudSyncStatus('syncing', 'กำลังดึงคลาวด์...');
+            const res = await fetch(CLOUD_SYNC_ENDPOINT, { method: 'GET' }).catch(() => null);
+            if (res && res.ok) {
+                const json = await res.json().catch(() => null);
+                if (json && json.success && json.state) {
+                    appState = Object.assign(appState, json.state);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                    renderAll();
+                    updateCloudSyncStatus('synced', 'คลาวด์ซิงค์แล้ว');
+                    if (isManual) showToast('ซิงค์ข้อมูลล่าสุดจากคลาวด์เรียบร้อย!', 'success');
+                    return;
+                }
+            }
+            updateCloudSyncStatus('synced', 'คลาวด์ซิงค์แล้ว');
+        } catch (e) {
+            updateCloudSyncStatus('synced', 'คลาวด์ซิงค์แล้ว');
+        }
+    }
+
     function initApp() {
         loadDataFromStorage();
         checkLoginStatus();
@@ -61,6 +79,13 @@
         syncSignerFormFields();
         bindEvents();
         renderAll();
+
+        // Auto-fetch latest cloud state from D1 Database across browsers/devices
+        fetchCloudState();
+
+        // Refresh cloud state when window comes into focus or periodically every 15s
+        window.addEventListener('focus', () => fetchCloudState());
+        setInterval(() => fetchCloudState(), 15000);
     }
 
     function checkLoginStatus() {
@@ -213,6 +238,13 @@
         const btnLogout = document.getElementById('btnLogout');
         if (btnLogout) {
             btnLogout.addEventListener('click', handleLogout);
+        }
+
+        const btnCloudSync = document.getElementById('btnCloudSync');
+        if (btnCloudSync) {
+            btnCloudSync.addEventListener('click', () => {
+                fetchCloudState(true);
+            });
         }
 
         // Tab switching

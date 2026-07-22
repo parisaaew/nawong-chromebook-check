@@ -1135,6 +1135,195 @@ body {
 }
 
 /* ==========================================================================
+   MOBILE & TABLET RESPONSIVE SYSTEM
+   ========================================================================== */
+html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+.app-container {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+    /* Prevent Sticky Header Jump when typing on mobile keyboard */
+    .topbar {
+        position: relative;
+        padding: 0.65rem 0.85rem;
+        gap: 0.65rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .topbar-left {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .topbar-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+        width: 100%;
+    }
+
+    .control-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+        width: 100%;
+    }
+
+    .control-group label {
+        font-size: 0.75rem;
+    }
+
+    .control-group .form-input,
+    .control-group .form-select {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        font-size: 14px; /* Prevent iOS zoom shift */
+    }
+
+    .topbar-actions .btn {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.775rem;
+        padding: 0.35rem 0.5rem;
+    }
+
+    .content-area {
+        padding: 0.75rem 0.5rem;
+    }
+
+    /* Section Header Title Wrap Fix */
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.65rem;
+    }
+
+    .section-header h2 {
+        font-size: 0.95rem;
+        width: 100%;
+        white-space: normal;
+        line-height: 1.35;
+    }
+
+    .section-header > div {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .section-header .btn {
+        flex: 1;
+        justify-content: center;
+        font-size: 0.775rem;
+        white-space: nowrap;
+    }
+
+    /* Dashboard & Class Cards */
+    .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }
+
+    .metric-card {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .metric-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+    }
+
+    .metric-value {
+        font-size: 1.25rem;
+    }
+
+    .class-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Filter & Inspection List */
+    .filter-card {
+        padding: 0.85rem;
+    }
+
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
+
+    .search-item {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    .filter-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .filter-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .inspection-list {
+        grid-template-columns: 1fr;
+    }
+
+    .inventory-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .toolbar-right {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .search-box {
+        width: 100%;
+    }
+
+    /* Signer Settings Card Grid on Mobile */
+    #signerSettingsCard > div:nth-child(2) {
+        grid-template-columns: 1fr !important;
+    }
+
+    .doc-signatures {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .topbar-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .checklist-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
    @MEDIA PRINT SPECIFICATION (FOR A4 PRINTING)
    ========================================================================== */
 @media print {
