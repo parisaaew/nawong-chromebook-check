@@ -535,6 +535,11 @@
         const reportClassSelect = document.getElementById('reportClassSelect');
         const editClass = document.getElementById('editClass');
 
+        const curTeacher = teacherSelect ? teacherSelect.value : (appState.activeTeacherRole || 'ALL');
+        const curInspectClass = inspectClassFilter ? inspectClassFilter.value : 'ALL';
+        const curInventoryClass = inventoryClassFilter ? inventoryClassFilter.value : 'ALL';
+        const curReportClass = reportClassSelect ? reportClassSelect.value : 'ALL';
+
         const teacherOptionsHTML = `
             <option value="ALL">ผู้ดูแลระบบ (งาน ICT / ภาพรวม)</option>
             ${appState.teachers.map(t => `<option value="${t.className}">${t.teacher} (${t.className})</option>`).join('')}
@@ -547,15 +552,23 @@
 
         const editClassHTML = appState.teachers.map(t => `<option value="${t.className}">${t.className}</option>`).join('');
 
-        if (teacherSelect) teacherSelect.innerHTML = teacherOptionsHTML;
-        if (inspectClassFilter) inspectClassFilter.innerHTML = classOptionsHTML;
-        if (inventoryClassFilter) inventoryClassFilter.innerHTML = classOptionsHTML;
-        if (reportClassSelect) reportClassSelect.innerHTML = classOptionsHTML;
-        if (editClass) editClass.innerHTML = editClassHTML;
-
-        if (teacherSelect && appState.activeTeacherRole) {
-            teacherSelect.value = appState.activeTeacherRole;
+        if (teacherSelect) {
+            teacherSelect.innerHTML = teacherOptionsHTML;
+            teacherSelect.value = curTeacher;
         }
+        if (inspectClassFilter) {
+            inspectClassFilter.innerHTML = classOptionsHTML;
+            inspectClassFilter.value = curInspectClass;
+        }
+        if (inventoryClassFilter) {
+            inventoryClassFilter.innerHTML = classOptionsHTML;
+            inventoryClassFilter.value = curInventoryClass;
+        }
+        if (reportClassSelect) {
+            reportClassSelect.innerHTML = classOptionsHTML;
+            reportClassSelect.value = curReportClass;
+        }
+        if (editClass) editClass.innerHTML = editClassHTML;
     }
 
     // --- TAB 1: DASHBOARD ---
@@ -906,7 +919,9 @@
         });
 
         saveDataToStorage();
-        renderAll();
+        renderInspectionList();
+        renderDashboard();
+        renderPrintReport();
         showToast(classFilter === 'ALL' ? 'บันทึกอุปกรณ์ครบถ้วนให้นักเรียนทุกคนเรียบร้อยแล้ว' : `บันทึกอุปกรณ์ครบถ้วนทั้งห้อง ${classFilter} เรียบร้อยแล้ว`, 'success');
     }
 
