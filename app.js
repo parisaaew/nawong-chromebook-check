@@ -86,12 +86,8 @@
         bindEvents();
         renderAll();
 
-        // Auto-fetch latest cloud state from D1 Database across browsers/devices
+        // Fetch initial cloud state once on startup without background timers
         fetchCloudState();
-
-        // Refresh cloud state when window comes into focus or periodically every 15s
-        window.addEventListener('focus', () => fetchCloudState());
-        setInterval(() => fetchCloudState(), 15000);
     }
 
     function checkLoginStatus() {
