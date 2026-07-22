@@ -45,6 +45,8 @@
 
     let parsedImportData = [];
 
+    let lastCloudStateStr = '';
+
     async function fetchCloudState(isManual = false) {
         try {
             updateCloudSyncStatus('syncing', 'กำลังดึงคลาวด์...');
@@ -52,9 +54,13 @@
             if (res && res.ok) {
                 const json = await res.json().catch(() => null);
                 if (json && json.success && json.state) {
-                    appState = Object.assign(appState, json.state);
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-                    renderAll();
+                    const newStateStr = JSON.stringify(json.state);
+                    if (newStateStr !== lastCloudStateStr && newStateStr !== JSON.stringify(appState)) {
+                        lastCloudStateStr = newStateStr;
+                        appState = Object.assign(appState, json.state);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                        renderAll();
+                    }
                     updateCloudSyncStatus('synced', 'คลาวด์ซิงค์แล้ว');
                     if (isManual) showToast('ซิงค์ข้อมูลล่าสุดจากคลาวด์เรียบร้อย!', 'success');
                     return;
@@ -871,35 +877,41 @@
     }
 
     function markAllClassComplete() {
-        const classFilter = document.getElementById('inspectClassFilter').value;
+        const classFilter = document.getElementById('inspectClassFilter') ? document.getElementById('inspectClassFilter').value : 'ALL';
         const periodKey = getActivePeriodKey();
 
-        if (classFilter === 'ALL') {
-            alert('กรุณาเลือกห้องเรียนก่อนทำรายการผ่านครบทั้งห้อง');
+        const targetStudents = classFilter === 'ALL' 
+            ? appState.students 
+            : appState.students.filter(s => s.className === classFilter);
+
+        if (targetStudents.length === 0) {
+            showToast('ไม่พบบุคลากร/นักเรียนสำหรับบันทึกผ่านครบถ้วน', 'error');
             return;
         }
 
-        if (!confirm(`คุณต้องการบันทึกให้นักเรียนห้อง ${classFilter} ทุกคนมีอุปกรณ์ครบถ้วน ใช่หรือไม่?`)) return;
+        const confirmMsg = classFilter === 'ALL'
+            ? `คุณต้องการบันทึกให้นักเรียนทุกคนทุกห้องเรียน (รวม ${targetStudents.length} คน) มีอุปกรณ์ครบถ้วน ใช่หรือไม่?`
+            : `คุณต้องการบันทึกให้นักเรียนห้อง ${classFilter} (รวม ${targetStudents.length} คน) มีอุปกรณ์ครบถ้วน ใช่หรือไม่?`;
+
+        if (!confirm(confirmMsg)) return;
 
         if (!appState.inspections[periodKey]) appState.inspections[periodKey] = {};
 
-        appState.students.forEach(s => {
-            if (s.className === classFilter) {
-                appState.inspections[periodKey][s.id] = {
-                    device: true,
-                    charger: true,
-                    pen: true,
-                    tag: true,
-                    status: 'COMPLETE',
-                    notes: '',
-                    updatedAt: new Date().toISOString()
-                };
-            }
+        targetStudents.forEach(s => {
+            appState.inspections[periodKey][s.id] = {
+                device: true,
+                charger: true,
+                pen: true,
+                tag: true,
+                status: 'COMPLETE',
+                notes: '',
+                updatedAt: new Date().toISOString()
+            };
         });
 
         saveDataToStorage();
         renderAll();
-        showToast(`บันทึกอุปกรณ์ครบถ้วนทั้งห้อง ${classFilter} เรียบร้อยแล้ว`, 'success');
+        showToast(classFilter === 'ALL' ? 'บันทึกอุปกรณ์ครบถ้วนให้นักเรียนทุกคนเรียบร้อยแล้ว' : `บันทึกอุปกรณ์ครบถ้วนทั้งห้อง ${classFilter} เรียบร้อยแล้ว`, 'success');
     }
 
     // --- TAB 3: INVENTORY TABLE ---
