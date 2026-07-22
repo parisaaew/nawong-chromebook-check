@@ -1302,11 +1302,6 @@ html, body {
     #signerSettingsCard > div:nth-child(2) {
         grid-template-columns: 1fr !important;
     }
-
-    .doc-signatures {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
 }
 
 @media (max-width: 480px) {
@@ -1381,7 +1376,23 @@ html, body {
     }
 
     .doc-signatures {
-        page-break-inside: avoid;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: 1rem !important;
+        page-break-inside: avoid !important;
+        width: 100% !important;
+        margin-top: 2.5rem !important;
+    }
+
+    .sig-block {
+        text-align: center !important;
+    }
+
+    .sig-line-wrapper {
+        display: flex !important;
+        align-items: flex-end !important;
+        width: 100% !important;
+        white-space: nowrap !important;
     }
 
     @page {
