@@ -99,7 +99,7 @@
         }
     }
 
-    const CLOUD_SYNC_ENDPOINT = 'https://kv-db-sync.nawongschool.workers.dev/api/chromebook';
+    const CLOUD_SYNC_ENDPOINT = '/api/sync';
     let syncTimeout = null;
 
     function updateCloudSyncStatus(status, text) {
