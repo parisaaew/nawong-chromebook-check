@@ -251,6 +251,7 @@
                                 <option value="PENDING">ยังไม่ได้ตรวจ</option>
                                 <option value="COMPLETE">อุปกรณ์ครบถ้วน</option>
                                 <option value="ISSUE">มีปัญหา / ไม่ครบ / ชำรุด</option>
+                                <option value="CRITICAL">สูญหาย / รอส่งซ่อมด่วน</option>
                             </select>
                         </div>
 
@@ -689,6 +690,22 @@
                     </button>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="modalImagePreview" class="modal-overlay">
+        <div class="modal-box" style="max-width: 650px; text-align: center; padding: 1rem; background: var(--slate-900);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; color: #ffffff;">
+                <h4 style="font-size: 0.95rem;"><i class="fa-solid fa-image text-teal"></i> รูปภาพถ่ายสภาพความเสียหาย / อาการชำรุด</h4>
+                <button class="modal-close btnCloseModalGeneric" type="button" aria-label="ปิด" style="color: #ffffff;">&times;</button>
+            </div>
+            <div style="background: #000; border-radius: var(--radius-sm); padding: 0.5rem; display: flex; align-items: center; justify-content: center;">
+                <img id="previewModalImg" src="" alt="ภาพถ่ายความเสียหาย" style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 4px;">
+            </div>
+            <div style="margin-top: 0.75rem; text-align: right;">
+                <button type="button" class="btn btn-sm btn-outline-secondary btnCloseModalGeneric" style="color: #fff; border-color: rgba(255,255,255,0.3);"><i class="fa-solid fa-xmark"></i> ปิด</button>
             </div>
         </div>
     </div>

@@ -44,8 +44,115 @@
     };
 
     let parsedImportData = [];
-
     let lastCloudStateStr = '';
+
+    /* ==========================================================================
+       IMAGE PROCESSING & HELPER FUNCTIONS
+       ========================================================================== */
+    function compressImageFile(file, maxWidth = 800, maxHeight = 800, quality = 0.7) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(dataUrl);
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handlePhotoUpload(studentId, file) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+            return;
+        }
+
+        try {
+            showToast('กำลังประมวลผลรูปภาพ...', 'info');
+            const compressedDataUrl = await compressImageFile(file, 800, 800, 0.7);
+
+            const periodKey = getActivePeriodKey();
+            if (!appState.inspections[periodKey]) appState.inspections[periodKey] = {};
+
+            const current = appState.inspections[periodKey][studentId] || {
+                device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: '', photos: []
+            };
+
+            if (!current.photos) current.photos = [];
+            if (current.photos.length >= 3) {
+                showToast('แนบรูปได้สูงสุด 3 รูปต่อเครื่อง', 'error');
+                return;
+            }
+
+            current.photos.push(compressedDataUrl);
+
+            if (current.status === 'PENDING') {
+                current.status = 'ISSUE';
+            }
+
+            current.updatedAt = new Date().toISOString();
+            appState.inspections[periodKey][studentId] = current;
+            saveDataToStorage();
+
+            renderInspectionList();
+            renderDashboard();
+            showToast('แนบรูปภาพถ่ายอาการชำรุดเรียบร้อยแล้ว', 'success');
+        } catch (err) {
+            console.error('Failed to compress image:', err);
+            showToast('เกิดข้อผิดพลาดในการโหลดรูปภาพ', 'error');
+        }
+    }
+
+    function removePhoto(studentId, photoIndex) {
+        const periodKey = getActivePeriodKey();
+        if (!appState.inspections[periodKey] || !appState.inspections[periodKey][studentId]) return;
+
+        const current = appState.inspections[periodKey][studentId];
+        if (current.photos && current.photos[photoIndex] !== undefined) {
+            current.photos.splice(photoIndex, 1);
+            current.updatedAt = new Date().toISOString();
+            saveDataToStorage();
+            renderInspectionList();
+            renderDashboard();
+            showToast('ลบรูปภาพเรียบร้อยแล้ว', 'info');
+        }
+    }
+
+    function openImagePreviewModal(imgSrc) {
+        const modal = document.getElementById('modalImagePreview');
+        const modalImg = document.getElementById('previewModalImg');
+        if (modal && modalImg) {
+            modalImg.src = imgSrc;
+            modal.classList.add('active');
+        }
+    }
 
     async function fetchCloudState(isManual = false) {
         try {
@@ -672,17 +779,33 @@
             if (issuesList.length === 0) {
                 recentIssueList.innerHTML = `<p class="text-muted" style="padding: 1rem; text-align: center;">ยังไม่มีรายการอุปกรณ์ชำรุดหรือสูญหายในงวดนี้</p>`;
             } else {
-                recentIssueList.innerHTML = issuesList.slice(0, 6).map(item => `
-                    <div class="issue-item">
-                        <div class="issue-info">
-                            <h4>เครื่องที่ #${item.student.deviceNo} - ${item.student.fullName} (${item.student.className})</h4>
-                            <p><i class="fa-solid fa-circle-exclamation text-amber"></i> ${item.inspection.notes || 'แจ้งอุปกรณ์ชำรุด/ไม่ครบ'}</p>
+                recentIssueList.innerHTML = issuesList.slice(0, 8).map(item => {
+                    const photos = item.inspection.photos || [];
+                    const isCrit = item.inspection.status === 'CRITICAL';
+                    return `
+                        <div class="issue-item">
+                            <div class="issue-info" style="flex: 1;">
+                                <h4>เครื่องที่ #${item.student.deviceNo} - ${item.student.fullName} (${item.student.className})</h4>
+                                <p><i class="fa-solid fa-circle-exclamation ${isCrit ? 'text-rose' : 'text-amber'}"></i> ${item.inspection.notes || (isCrit ? 'แจ้งเครื่องสูญหาย / รอส่งซ่อมด่วน' : 'แจ้งอุปกรณ์ชำรุด/ไม่ครบ')}</p>
+                                ${photos.length > 0 ? `
+                                    <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                        ${photos.map(p => `<img src="${p}" class="thumb-img-dashboard" data-src="${p}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;" title="คลิกเพื่อดูรูปขยาย">`).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <span class="badge ${isCrit ? 'badge-danger' : 'badge-warning'}">
+                                ${isCrit ? 'สูญหาย/ซ่อมด่วน' : 'อุปกรณ์ไม่ครบ'}
+                            </span>
                         </div>
-                        <span class="badge ${item.inspection.status === 'CRITICAL' ? 'badge-danger' : 'badge-warning'}">
-                            ${item.inspection.status === 'CRITICAL' ? 'สูญหาย/ซ่อมด่วน' : 'อุปกรณ์ไม่ครบ'}
-                        </span>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
+
+                recentIssueList.querySelectorAll('.thumb-img-dashboard').forEach(img => {
+                    img.addEventListener('click', () => {
+                        const src = img.getAttribute('data-src');
+                        openImagePreviewModal(src);
+                    });
+                });
             }
         }
     }
@@ -705,7 +828,8 @@
             const insp = periodInspections[s.id] || { status: 'PENDING' };
             if (statusFilter === 'PENDING' && insp.status !== 'PENDING') return false;
             if (statusFilter === 'COMPLETE' && insp.status !== 'COMPLETE') return false;
-            if (statusFilter === 'ISSUE' && (insp.status !== 'ISSUE' && insp.status !== 'CRITICAL')) return false;
+            if (statusFilter === 'ISSUE' && insp.status !== 'ISSUE') return false;
+            if (statusFilter === 'CRITICAL' && insp.status !== 'CRITICAL') return false;
 
             if (searchText) {
                 const matchName = s.fullName.toLowerCase().includes(searchText);
@@ -739,12 +863,14 @@
 
         container.innerHTML = filtered.map(s => {
             const insp = periodInspections[s.id] || {
-                device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: ''
+                device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: '', photos: []
             };
 
             const isPending = insp.status === 'PENDING';
             const isComplete = insp.status === 'COMPLETE';
-            const isIssue = insp.status === 'ISSUE' || insp.status === 'CRITICAL';
+            const isCritical = insp.status === 'CRITICAL';
+            const isIssue = insp.status === 'ISSUE';
+            const photos = insp.photos || [];
 
             return `
                 <div class="student-card" data-id="${s.id}">
@@ -756,8 +882,8 @@
                                 <span class="student-meta">${s.className} • รหัส ${s.studentCode}</span>
                             </div>
                         </div>
-                        <span class="badge ${isComplete ? 'badge-success' : isIssue ? 'badge-danger' : 'badge-warning'}">
-                            ${isComplete ? 'ครบถ้วน' : isIssue ? 'มีปัญหา' : 'ยังไม่ตรวจ'}
+                        <span class="badge ${isComplete ? 'badge-success' : isCritical ? 'badge-danger' : isIssue ? 'badge-warning' : 'badge-warning'}" style="${isCritical ? 'background:#fff1f2; color:#be123c; border-color:#fecdd3;' : ''}">
+                            ${isComplete ? 'ครบถ้วน' : isCritical ? 'สูญหาย/ซ่อมด่วน' : isIssue ? 'มีปัญหา' : 'ยังไม่ตรวจ'}
                         </span>
                     </div>
 
@@ -782,18 +908,48 @@
                                 <span class="check-label"><i class="fa-solid fa-barcode"></i> รหัสตรงเครื่อง</span>
                                 <i class="fa-solid ${insp.tag ? 'fa-square-check' : 'fa-square-xmark'}"></i>
                             </div>
+
+                            <div class="check-item check-item-lost ${isCritical ? 'checked-lost' : ''}" data-item="isLost" data-id="${s.id}">
+                                <span class="check-label"><i class="fa-solid fa-circle-xmark text-rose"></i> เครื่องสูญหาย / รอส่งซ่อมด่วน</span>
+                                <i class="fa-solid ${isCritical ? 'fa-square-check text-rose' : 'fa-square'}"></i>
+                            </div>
                         </div>
 
                         <div class="card-notes">
                             <textarea class="notes-input" data-id="${s.id}" placeholder="หมายเหตุเพิ่มเติม/อาการชำรุด (ถ้ามี)...">${insp.notes || ''}</textarea>
                         </div>
+
+                        <div class="card-photos-container">
+                            <div class="photo-actions">
+                                <label class="btn btn-sm btn-outline-secondary photo-upload-btn" title="แนบรูปถ่ายความเสียหาย/อาการชำรุด">
+                                    <i class="fa-solid fa-camera text-teal"></i> แนบรูปถ่ายชำรุด
+                                    <input type="file" accept="image/*" class="photo-file-input" data-id="${s.id}" style="display:none">
+                                </label>
+                                ${photos.length > 0 ? `<span class="photo-count-hint"><i class="fa-solid fa-paperclip"></i> แนบ ${photos.length} รูป</span>` : ''}
+                            </div>
+                            ${photos.length > 0 ? `
+                                <div class="photo-thumbnails-grid">
+                                    ${photos.map((imgData, imgIdx) => `
+                                        <div class="thumb-wrapper">
+                                            <img src="${imgData}" class="thumb-img" data-src="${imgData}" title="คลิกเพื่อดูรูปขยาย">
+                                            <button type="button" class="btn-remove-photo" data-id="${s.id}" data-idx="${imgIdx}" title="ลบรูปนี้">&times;</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
 
                     <div class="student-card-footer">
                         <small style="color: #64748b; font-size: 0.75rem;">S/N: ${s.serialNo}</small>
-                        <button class="btn btn-sm ${isComplete ? 'btn-outline-secondary' : 'btn-success'} btn-toggle-complete" data-id="${s.id}">
-                            <i class="fa-solid ${isComplete ? 'fa-rotate-left' : 'fa-check'}"></i> ${isComplete ? 'ยกเลิก' : 'บันทึกผ่านครบ'}
-                        </button>
+                        <div style="display: flex; gap: 0.35rem;">
+                            <button class="btn btn-sm ${isCritical ? 'btn-danger' : 'btn-outline-danger'} btn-toggle-critical" data-id="${s.id}">
+                                <i class="fa-solid fa-triangle-exclamation"></i> ${isCritical ? 'สูญหายแล้ว' : 'แจ้งสูญหาย'}
+                            </button>
+                            <button class="btn btn-sm ${isComplete ? 'btn-outline-secondary' : 'btn-success'} btn-toggle-complete" data-id="${s.id}">
+                                <i class="fa-solid ${isComplete ? 'fa-rotate-left' : 'fa-check'}"></i> ${isComplete ? 'ยกเลิก' : 'ผ่านครบ'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -814,10 +970,41 @@
             });
         });
 
+        container.querySelectorAll('.btn-toggle-critical').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const studentId = btn.getAttribute('data-id');
+                toggleStudentCritical(studentId);
+            });
+        });
+
         container.querySelectorAll('.notes-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const studentId = input.getAttribute('data-id');
                 updateStudentNotes(studentId, e.target.value);
+            });
+        });
+
+        container.querySelectorAll('.photo-file-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const studentId = input.getAttribute('data-id');
+                const file = e.target.files ? e.target.files[0] : null;
+                handlePhotoUpload(studentId, file);
+            });
+        });
+
+        container.querySelectorAll('.btn-remove-photo').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const studentId = btn.getAttribute('data-id');
+                const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                removePhoto(studentId, idx);
+            });
+        });
+
+        container.querySelectorAll('.thumb-img').forEach(img => {
+            img.addEventListener('click', () => {
+                const src = img.getAttribute('data-src');
+                openImagePreviewModal(src);
             });
         });
     }
@@ -827,15 +1014,59 @@
         if (!appState.inspections[periodKey]) appState.inspections[periodKey] = {};
         
         const current = appState.inspections[periodKey][studentId] || {
-            device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: ''
+            device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: '', photos: []
         };
 
-        current[itemKey] = !current[itemKey];
-
-        if (current.device && current.charger && current.pen && current.tag) {
-            current.status = 'COMPLETE';
+        if (itemKey === 'isLost') {
+            if (current.status === 'CRITICAL') {
+                if (current.device && current.charger && current.pen && current.tag) {
+                    current.status = 'COMPLETE';
+                } else {
+                    current.status = 'ISSUE';
+                }
+            } else {
+                current.status = 'CRITICAL';
+            }
         } else {
-            current.status = 'ISSUE';
+            current[itemKey] = !current[itemKey];
+
+            if (current.status === 'CRITICAL') {
+                // If critical, user toggles a hardware item, we still keep or update
+            } else if (current.device && current.charger && current.pen && current.tag) {
+                current.status = 'COMPLETE';
+            } else {
+                current.status = 'ISSUE';
+            }
+        }
+
+        current.updatedAt = new Date().toISOString();
+        appState.inspections[periodKey][studentId] = current;
+        saveDataToStorage();
+
+        renderInspectionList();
+        renderDashboard();
+    }
+
+    function toggleStudentCritical(studentId) {
+        const periodKey = getActivePeriodKey();
+        if (!appState.inspections[periodKey]) appState.inspections[periodKey] = {};
+
+        const current = appState.inspections[periodKey][studentId] || {
+            device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: '', photos: []
+        };
+
+        const isCriticalNow = current.status === 'CRITICAL';
+
+        if (isCriticalNow) {
+            if (current.device && current.charger && current.pen && current.tag) {
+                current.status = 'COMPLETE';
+            } else {
+                current.status = 'ISSUE';
+            }
+            showToast('ยกเลิกสถานะสูญหาย/ส่งซ่อมเรียบร้อย', 'info');
+        } else {
+            current.status = 'CRITICAL';
+            showToast('แจ้งสถานะ เครื่องสูญหาย/รอส่งซ่อมด่วน เรียบร้อยแล้ว', 'error');
         }
 
         current.updatedAt = new Date().toISOString();
@@ -862,6 +1093,15 @@
             current.tag = true;
             current.status = 'COMPLETE';
         }
+
+        current.updatedAt = new Date().toISOString();
+        appState.inspections[periodKey][studentId] = current;
+        saveDataToStorage();
+
+        renderInspectionList();
+        renderDashboard();
+        showToast(isCompleteNow ? 'ยกเลิกการตรวจเรียบร้อย' : 'บันทึกผ่านครบถ้วนแล้ว', 'success');
+    }
 
         current.updatedAt = new Date().toISOString();
         appState.inspections[periodKey][studentId] = current;
@@ -1054,7 +1294,25 @@
                 docTableBody.innerHTML = `<tr><td colspan="8" style="padding: 2rem;">ไม่มีข้อมูลเครื่อง Chromebook สำหรับพิมพ์ในห้องที่เลือก</td></tr>`;
             } else {
                 docTableBody.innerHTML = filtered.map((st, idx) => {
-                    const insp = periodInspections[st.id] || { device: true, charger: true, pen: true, status: 'PENDING', notes: '' };
+                    const insp = periodInspections[st.id] || { device: true, charger: true, pen: true, tag: true, status: 'PENDING', notes: '', photos: [] };
+                    const photos = insp.photos || [];
+
+                    let noteText = '';
+                    if (insp.status === 'COMPLETE') {
+                        noteText = '<span style="color: #059669; font-weight: 500;">✓ อุปกรณ์ครบสมบูรณ์</span>';
+                    } else if (insp.status === 'CRITICAL') {
+                        noteText = `<strong style="color: #be123c;">⚠️ สูญหาย / รอส่งซ่อมด่วน</strong>${insp.notes ? `<br><small style="color: #475569;">${insp.notes}</small>` : ''}`;
+                    } else {
+                        noteText = `${insp.notes || 'มีอุปกรณ์ไม่ครบ/ชำรุด'}`;
+                    }
+
+                    if (photos.length > 0) {
+                        noteText += `
+                            <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                ${photos.map(p => `<img src="${p}" style="height: 38px; width: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #94a3b8;">`).join('')}
+                            </div>
+                        `;
+                    }
 
                     return `
                         <tr>
@@ -1065,9 +1323,7 @@
                             <td>${insp.device ? '✓ ปกติ' : '✗ ชำรุด'}</td>
                             <td>${insp.charger ? '✓ ครบ' : '✗ ไม่ครบ'}</td>
                             <td>${insp.pen ? '✓ ครบ' : '✗ หาย/ชำรุด'}</td>
-                            <td class="text-left">
-                                ${insp.status === 'COMPLETE' ? '<span style="color: #059669;">อุปกรณ์ครบสมบูรณ์</span>' : insp.notes || 'มีอุปกรณ์ไม่ครบ'}
-                            </td>
+                            <td class="text-left">${noteText}</td>
                         </tr>
                     `;
                 }).join('');
