@@ -1103,15 +1103,6 @@
         showToast(isCompleteNow ? 'ยกเลิกการตรวจเรียบร้อย' : 'บันทึกผ่านครบถ้วนแล้ว', 'success');
     }
 
-        current.updatedAt = new Date().toISOString();
-        appState.inspections[periodKey][studentId] = current;
-        saveDataToStorage();
-
-        renderInspectionList();
-        renderDashboard();
-        showToast(isCompleteNow ? 'ยกเลิกการตรวจเรียบร้อย' : 'บันทึกผ่านครบถ้วนแล้ว', 'success');
-    }
-
     function updateStudentNotes(studentId, notesText) {
         const periodKey = getActivePeriodKey();
         if (!appState.inspections[periodKey]) appState.inspections[periodKey] = {};
